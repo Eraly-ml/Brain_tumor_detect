@@ -8,7 +8,7 @@ import os
 app = FastAPI()
 
 # URL модели на Google Drive
-MODEL_URL = 'https://drive.google.com/uc?export=download&id=YOUR_FILE_ID'
+MODEL_URL = 'https://drive.google.com/uc?export=download&id=1Cgx6JM18e3RZ0ADNqyBuSgiauvkIIle5'
 
 # Путь для сохранения загруженной модели
 model_path = "model/brain_tumor_model.pkl"
