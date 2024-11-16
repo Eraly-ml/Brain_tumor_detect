@@ -1,0 +1,8 @@
+fastai
+ipython
+ipywidgets
+fastapi
+uvicorn
+nest-asyncio
+pyngrok
+python-multipart
