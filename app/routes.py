@@ -1,20 +1,36 @@
+from fastapi import FastAPI
+from pydantic import BaseModel
+import gdown
 import pickle
-from flask import Flask, request, jsonify
 import numpy as np
+import os
 
-# Загружаем модель
-with open('model/brain_tumor_model.pkl', 'rb') as model_file:
-    model = pickle.load(model_file)
+app = FastAPI()
 
-# Инициализация Flask приложения
-app = Flask(__name__)
+# URL модели на Google Drive
+MODEL_URL = 'https://drive.google.com/uc?export=download&id=YOUR_FILE_ID'
 
-@app.route("/predict", methods=["POST"])
-def predict():
-    data = request.get_json()  # Получаем данные в формате JSON
-    features = np.array(data["features"]).reshape(1, -1)  # Преобразуем данные в массив
+# Путь для сохранения загруженной модели
+model_path = "model/brain_tumor_model.pkl"
+
+# Функция для загрузки модели из Google Drive
+def download_model():
+    if not os.path.exists(model_path):
+        gdown.download(MODEL_URL, model_path, quiet=False)
+    with open(model_path, 'rb') as model_file:
+        model = pickle.load(model_file)
+    return model
+
+# Загружаем модель при старте приложения
+model = download_model()
+
+# Модель для входных данных
+class PredictionRequest(BaseModel):
+    features: list
+
+@app.post("/predict")
+async def predict(request: PredictionRequest):
+    features = np.array(request.features).reshape(1, -1)  # Преобразуем данные в массив
     prediction = model.predict(features)  # Получаем предсказание
-    return jsonify({"prediction": prediction[0]})
+    return {"prediction": prediction[0]}
 
-if __name__ == "__main__":
-    app.run(debug=True)
