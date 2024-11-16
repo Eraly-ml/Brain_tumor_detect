@@ -1,8 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, File, UploadFile
 from pydantic import BaseModel
 import gdown
-import pickle
-import numpy as np
+import torch
+from fastai.vision.all import load_learner
+from io import BytesIO
+from PIL import Image
 import os
 
 app = FastAPI()
@@ -17,20 +19,31 @@ model_path = "model/brain_tumor_model.pkl"
 def download_model():
     if not os.path.exists(model_path):
         gdown.download(MODEL_URL, model_path, quiet=False)
-    with open(model_path, 'rb') as model_file:
-        model = pickle.load(model_file)
-    return model
+    return load_learner(model_path)
 
 # Загружаем модель при старте приложения
-model = download_model()
+learner = download_model()
 
 # Модель для входных данных
 class PredictionRequest(BaseModel):
-    features: list
+    file: str  # Здесь предполагается, что файл будет передаваться
 
 @app.post("/predict")
-async def predict(request: PredictionRequest):
-    features = np.array(request.features).reshape(1, -1)  # Преобразуем данные в массив
-    prediction = model.predict(features)  # Получаем предсказание
-    return {"prediction": prediction[0]}
+async def predict(file: UploadFile = File(...)):
+    # Чтение изображения из файла
+    image_data = await file.read()
+    image = Image.open(BytesIO(image_data))
 
+    # Получаем предсказание с использованием FastAI
+    pred_class, pred_idx, outputs = learner.predict(image)
+
+    # Вероятность для класса "Tumor"
+    prob = torch.softmax(outputs, dim=0)[pred_idx].item()
+
+    # Интерпретация предсказания
+    prediction_label = "Tumor detected" if pred_class == 1 else "No tumor"
+    
+    return {
+        "Prediction": prediction_label,
+        "Probability": round(prob, 4)
+    }
